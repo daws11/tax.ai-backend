@@ -28,7 +28,12 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://www.dashboard.taxai.ae', 'https://taxai.ae']
+    ? [
+        'https://www.dashboard.taxai.ae', 
+        'https://taxai.ae',
+        'https://taxai-tc29.onrender.com/', // Ganti dengan URL frontend Render yang sebenarnya
+        'https://*.onrender.com' // Allow all Render subdomains for flexibility
+      ]
     : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'],
   credentials: true
 }));

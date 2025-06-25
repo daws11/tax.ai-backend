@@ -27,14 +27,16 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://www.dashboard.taxai.ae', 
-        'https://taxai.ae',
-        'https://taxai-tc29.onrender.com',
-        'https://taxai-backend-dm7p.onrender.com' 
-      ]
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'],
+  origin: (origin, callback) => {
+    // Izinkan origin yang berakhiran .onrender.com atau taxai.ae
+    if (!origin) return callback(null, true); // untuk request dari server (tanpa origin)
+    const allowed = /\.onrender\.com$/.test(origin) || /taxai\.ae$/.test(origin);
+    if (allowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 

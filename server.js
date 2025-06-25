@@ -31,8 +31,8 @@ app.use(cors({
     ? [
         'https://www.dashboard.taxai.ae', 
         'https://taxai.ae',
-        'https://taxai-tc29.onrender.com/', // Ganti dengan URL frontend Render yang sebenarnya
-        'https://*.onrender.com' // Allow all Render subdomains for flexibility
+        'https://taxai-tc29.onrender.com',
+        'https://taxai-backend-dm7p.onrender.com' 
       ]
     : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'],
   credentials: true

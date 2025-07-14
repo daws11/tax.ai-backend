@@ -28,8 +28,11 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
-    // Izinkan origin yang berakhiran .onrender.com atau taxai.ae
     if (!origin) return callback(null, true); // untuk request dari server (tanpa origin)
+    // Allow localhost:8080 in development
+    if (process.env.NODE_ENV !== 'production' && origin === 'http://localhost:8080') {
+      return callback(null, true);
+    }
     const allowed = /\.onrender\.com$/.test(origin) || /taxai\.ae$/.test(origin);
     if (allowed) {
       callback(null, true);

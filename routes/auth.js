@@ -11,11 +11,11 @@ router.get('/plans', (req, res) => {
     {
       id: 'trial',
       name: 'Free Trial',
-      description: '14 days free trial with 50 messages',
+      description: 'No Credit Card Required',
       price: 0,
       messageLimit: 50,
       duration: 14,
-      features: ['50 messages', '14 days', 'Full access to features']
+      features: ['10 messages', '14 days', 'Full access to features']
     },
     {
       id: 'monthly',
@@ -62,7 +62,7 @@ router.post('/register', validateRegistration, handleValidationErrors, async (re
 
     // Get plan details
     const plans = {
-      trial: { messageLimit: 50, duration: 14, price: 0 },
+      trial: { messageLimit: 10, duration: 14, price: 0 },
       monthly: { messageLimit: 100, duration: 30, price: 99 },
       quarterly: { messageLimit: 300, duration: 90, price: 250 },
       yearly: { messageLimit: 1200, duration: 365, price: 899 }

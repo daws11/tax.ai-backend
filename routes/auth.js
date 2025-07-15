@@ -83,6 +83,7 @@ router.post('/register', validateRegistration, handleValidationErrors, async (re
       status: subscriptionType === 'trial' ? 'active' : 'pending',
       messageLimit: plan.messageLimit,
       remainingMessages: plan.messageLimit,
+      callSeconds: 180, // 3 menit dalam detik
       startDate: new Date(),
       endDate: endDate,
       payment: subscriptionType === 'trial' ? null : {

@@ -38,6 +38,11 @@ const subscriptionSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  callSeconds: {
+    type: Number,
+    default: 180, // 3 menit dalam detik
+    required: true
+  },
   startDate: {
     type: Date,
     default: Date.now

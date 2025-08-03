@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import User from '../models/User.js';
 import { auth } from '../middleware/auth.js';
 import { validatePayment, handleValidationErrors } from '../middleware/validation.js';
+import emailService from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -13,8 +14,24 @@ function getStripeInstance() {
   return new Stripe(process.env.STRIPE_SECRET_KEY);
 }
 
+// Middleware to check if email is verified
+const requireEmailVerification = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user.emailVerified) {
+      return res.status(403).json({ 
+        message: 'Email verification required before payment',
+        requiresEmailVerification: true 
+      });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Create payment intent
-router.post('/create-payment-intent', auth, async (req, res) => {
+router.post('/create-payment-intent', auth, requireEmailVerification, async (req, res) => {
   const stripe = getStripeInstance();
   if (!stripe) return res.status(500).json({ message: 'Stripe key not set' });
   try {
@@ -49,7 +66,7 @@ router.post('/create-payment-intent', auth, async (req, res) => {
 });
 
 // Confirm payment and activate subscription
-router.post('/confirm-payment', auth, validatePayment, handleValidationErrors, async (req, res) => {
+router.post('/confirm-payment', auth, requireEmailVerification, validatePayment, handleValidationErrors, async (req, res) => {
   const stripe = getStripeInstance();
   if (!stripe) return res.status(500).json({ message: 'Stripe key not set' });
   try {
@@ -92,6 +109,15 @@ router.post('/confirm-payment', auth, validatePayment, handleValidationErrors, a
 
     await user.save();
 
+    // Send welcome email after successful payment
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.name);
+      console.log('Welcome email sent successfully after payment');
+    } catch (emailError) {
+      console.error('Failed to send welcome email after payment:', emailError);
+      // Don't fail payment if welcome email fails
+    }
+
     res.json({
       message: 'Payment confirmed and subscription activated',
       subscription: user.subscription
@@ -103,7 +129,7 @@ router.post('/confirm-payment', auth, validatePayment, handleValidationErrors, a
 });
 
 // Get payment history
-router.get('/history', auth, async (req, res) => {
+router.get('/history', auth, requireEmailVerification, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     

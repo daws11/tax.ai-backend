@@ -24,6 +24,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Log environment variables for debugging
+console.log('🔍 Environment Variables Check:');
+console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? '***SET***' : 'NOT SET');
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? '***SET***' : 'NOT SET');
+console.log('='.repeat(50));
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -96,6 +105,8 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`📧 Email service configured for: no-reply@taxai.ae`);
+  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
 });
 
 // Graceful shutdown

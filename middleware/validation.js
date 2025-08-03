@@ -13,18 +13,12 @@ export const validateRegistration = [
   
   body('password')
     .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage('Password must be at least 6 characters long'),
   
   body('jobTitle')
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage('Job title must be between 2 and 100 characters'),
-  
-  body('subscriptionType')
-    .isIn(['monthly', 'quarterly', 'yearly', 'trial'])
-    .withMessage('Invalid subscription type')
+    .withMessage('Job title must be between 2 and 100 characters')
 ];
 
 export const validatePayment = [

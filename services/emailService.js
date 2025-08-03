@@ -284,14 +284,14 @@ class EmailService {
       </head>
       <body>
         <div class="email-container">
-          <div class="header">
+        <div class="header">
             <div class="logo-container">
               <img src="https://www.taxai.ae/lovable-uploads/logo%20circle.png" alt="TaxAI Logo" class="logo">
               <img src="https://taxai.ae/lovable-uploads/logo-new.png" alt="TaxAI Brand" class="logo">
             </div>
             <h1>Complete Your Registration</h1>
             <p>Welcome to TaxAI - Your AI-Powered Tax Assistant</p>
-          </div>
+        </div>
           
           <div class="content">
             <div class="greeting">Hello! 👋</div>
@@ -352,7 +352,7 @@ class EmailService {
                 © 2024 TaxAI. All rights reserved. This email was sent to ${email}
               </div>
             </div>
-          </div>
+        </div>
         </div>
       </body>
       </html>
@@ -619,14 +619,14 @@ class EmailService {
       </head>
       <body>
         <div class="email-container">
-          <div class="header">
+        <div class="header">
             <div class="logo-container">
 <img src="https://www.taxai.ae/lovable-uploads/logo%20circle.png" alt="TaxAI Logo" class="logo">
               <img src="https://taxai.ae/lovable-uploads/logo-new.png" alt="TaxAI Brand" class="logo">
             </div>
             <h1>Welcome to TaxAI! 🎉</h1>
             <p>Your account is now fully activated and ready to use</p>
-          </div>
+        </div>
           
           <div class="content">
             <div class="greeting">Hello ${name}! 👋</div>
@@ -654,7 +654,7 @@ class EmailService {
                 <li>Get expert support whenever you need it</li>
                 <li>Access comprehensive tax resources</li>
                 <li>Connect with our professional community</li>
-              </ul>
+          </ul>
             </div>
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
@@ -682,7 +682,7 @@ class EmailService {
                 © 2024 TaxAI. All rights reserved. This email was sent to ${email}
               </div>
             </div>
-          </div>
+        </div>
         </div>
       </body>
       </html>

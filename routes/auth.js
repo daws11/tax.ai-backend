@@ -113,7 +113,7 @@ router.post('/register', validateRegistration, handleValidationErrors, async (re
   }
 });
 
-// Verify email endpoint
+// Legacy verify email endpoint (deprecated - kept for backward compatibility)
 router.get('/verify-email', async (req, res) => {
   try {
     const { token } = req.query;
@@ -481,7 +481,21 @@ router.post('/send-verification', async (req, res) => {
     }
     
     // Send verification email
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+    let frontendUrl;
+    if (process.env.NODE_ENV === 'production') {
+      frontendUrl = 'https://taxai.ae';
+    } else {
+      frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    }
+    
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+    
+    console.log('📧 Sending verification email:');
+    console.log('  - Email:', email);
+    console.log('  - Environment:', process.env.NODE_ENV);
+    console.log('  - Frontend URL:', frontendUrl);
+    console.log('  - Verification URL:', verificationUrl);
+    console.log('  - Backend URL:', process.env.BACKEND_URL || 'https://tax-ai-backend-dm7p.onrender.com');
     
     await emailService.sendVerificationEmail(email, verificationUrl);
     
@@ -517,11 +531,16 @@ router.post('/cleanup-temp-users', async (req, res) => {
 // Verify email with token
 router.post('/verify-email', async (req, res) => {
   try {
+    console.log('🔍 POST /verify-email called with:', req.body);
+    
     const { token, email } = req.body;
     
     if (!token || !email) {
+      console.log('❌ Missing token or email');
       return res.status(400).json({ message: 'Token and email are required' });
     }
+    
+    console.log('🔍 Looking for user with:', { email, token });
     
     const user = await User.findOne({ 
       email,
@@ -530,11 +549,15 @@ router.post('/verify-email', async (req, res) => {
     });
     
     if (!user) {
+      console.log('❌ User not found or already verified');
       return res.status(400).json({ message: 'Invalid verification token or email' });
     }
     
+    console.log('✅ User found:', user._id);
+    
     // Check if token is expired
     if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
+      console.log('❌ Token expired');
       return res.status(400).json({ message: 'Verification token has expired' });
     }
     
@@ -544,13 +567,15 @@ router.post('/verify-email', async (req, res) => {
     user.emailVerificationExpires = undefined;
     await user.save();
     
+    console.log('✅ Email verified successfully for user:', user._id);
+    
     res.json({
       message: 'Email verified successfully',
       verified: true,
       userId: user._id
     });
   } catch (error) {
-    console.error('Verify email error:', error);
+    console.error('❌ Verify email error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

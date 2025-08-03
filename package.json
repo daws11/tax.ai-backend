@@ -7,7 +7,8 @@
   "packageManager": "pnpm@8.15.0",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "NODE_ENV=development nodemon server.js",
+    "dev:prod": "NODE_ENV=production nodemon server.js",
     "build": "echo 'No build step required for Node.js backend'",
     "test": "echo 'No tests specified'"
   },

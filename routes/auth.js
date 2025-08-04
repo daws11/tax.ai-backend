@@ -569,6 +569,20 @@ router.post('/verify-email', async (req, res) => {
     
     console.log('✅ Email verified successfully for user:', user._id);
     
+    // Send welcome email after successful verification (only if user has a proper name)
+    if (user.name && user.name !== 'Temporary User') {
+      try {
+        console.log('📧 Sending welcome email to:', user.email);
+        await emailService.sendWelcomeEmail(user.email, user.name);
+        console.log('✅ Welcome email sent successfully to:', user.email);
+      } catch (welcomeEmailError) {
+        console.error('❌ Failed to send welcome email:', welcomeEmailError);
+        // Don't fail verification if welcome email fails
+      }
+    } else {
+      console.log('⏭️ Skipping welcome email - user has temporary name');
+    }
+    
     res.json({
       message: 'Email verified successfully',
       verified: true,
@@ -641,6 +655,16 @@ router.post('/update-user-after-verification', async (req, res) => {
     user.password = await bcrypt.hash(password, 10);
     
     await user.save();
+    
+    // Send welcome email after complete registration
+    try {
+      console.log('📧 Sending welcome email after complete registration to:', user.email);
+      await emailService.sendWelcomeEmail(user.email, user.name);
+      console.log('✅ Welcome email sent successfully after registration to:', user.email);
+    } catch (welcomeEmailError) {
+      console.error('❌ Failed to send welcome email after registration:', welcomeEmailError);
+      // Don't fail registration if welcome email fails
+    }
     
     // Generate token for the updated user
     const token = generateToken(user._id);

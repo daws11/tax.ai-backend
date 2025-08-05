@@ -569,19 +569,8 @@ router.post('/verify-email', async (req, res) => {
     
     console.log('✅ Email verified successfully for user:', user._id);
     
-    // Send welcome email after successful verification (only if user has a proper name)
-    if (user.name && user.name !== 'Temporary User') {
-      try {
-        console.log('📧 Sending welcome email to:', user.email);
-        await emailService.sendWelcomeEmail(user.email, user.name);
-        console.log('✅ Welcome email sent successfully to:', user.email);
-      } catch (welcomeEmailError) {
-        console.error('❌ Failed to send welcome email:', welcomeEmailError);
-        // Don't fail verification if welcome email fails
-      }
-    } else {
-      console.log('⏭️ Skipping welcome email - user has temporary name');
-    }
+    // Welcome email will be sent when user reaches success step
+    console.log('✅ Email verified successfully - welcome email will be sent at success step');
     
     res.json({
       message: 'Email verified successfully',
@@ -656,15 +645,8 @@ router.post('/update-user-after-verification', async (req, res) => {
     
     await user.save();
     
-    // Send welcome email after complete registration
-    try {
-      console.log('📧 Sending welcome email after complete registration to:', user.email);
-      await emailService.sendWelcomeEmail(user.email, user.name);
-      console.log('✅ Welcome email sent successfully after registration to:', user.email);
-    } catch (welcomeEmailError) {
-      console.error('❌ Failed to send welcome email after registration:', welcomeEmailError);
-      // Don't fail registration if welcome email fails
-    }
+    // Welcome email will be sent when user reaches success step
+    console.log('✅ User updated successfully - welcome email will be sent at success step');
     
     // Generate token for the updated user
     const token = generateToken(user._id);
@@ -751,6 +733,26 @@ router.get('/email-verification-status', auth, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Send welcome email when user reaches success step
+router.post('/send-welcome-email', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({ message: 'Email and name are required' });
+    }
+    
+    console.log('📧 Sending welcome email to:', email);
+    await emailService.sendWelcomeEmail(email, name);
+    console.log('✅ Welcome email sent successfully to:', email);
+    
+    res.json({ message: 'Welcome email sent successfully' });
+  } catch (error) {
+    console.error('❌ Failed to send welcome email:', error);
+    res.status(500).json({ message: 'Failed to send welcome email' });
   }
 });
 

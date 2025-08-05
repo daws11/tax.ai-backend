@@ -109,14 +109,8 @@ router.post('/confirm-payment', auth, requireEmailVerification, validatePayment,
 
     await user.save();
 
-    // Send welcome email after successful payment
-    try {
-      await emailService.sendWelcomeEmail(user.email, user.name);
-      console.log('Welcome email sent successfully after payment');
-    } catch (emailError) {
-      console.error('Failed to send welcome email after payment:', emailError);
-      // Don't fail payment if welcome email fails
-    }
+    // Welcome email will be sent when user reaches success step
+    console.log('✅ Payment confirmed - welcome email will be sent at success step');
 
     res.json({
       message: 'Payment confirmed and subscription activated',

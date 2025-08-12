@@ -756,4 +756,72 @@ router.post('/send-welcome-email', async (req, res) => {
   }
 });
 
+// Activate trial plan for new users
+router.post('/activate-trial-plan', async (req, res) => {
+  try {
+    const { email, planName } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    
+    console.log('📋 Activating trial plan for:', email, 'Plan:', planName);
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Check if user already has an active subscription
+    if (user.subscription && user.subscription.status === 'active') {
+      console.log('⚠️ User already has active subscription:', user.subscription.type);
+      return res.json({ 
+        message: 'User already has active subscription',
+        subscription: user.subscription 
+      });
+    }
+    
+    // Set trial plan details
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 14); // 14 days trial
+    
+    user.subscription = {
+      type: 'trial',
+      status: 'active',
+      messageLimit: 50, // Trial message limit
+      remainingMessages: 50,
+      callSeconds: 300, // 5 minutes trial call time
+      startDate: new Date(),
+      endDate: trialEndDate,
+      payment: {
+        amount: 0,
+        method: 'trial',
+        lastPaymentDate: new Date(),
+        nextPaymentDate: trialEndDate
+      }
+    };
+    
+    // Mark trial as used
+    user.trialUsed = true;
+    
+    await user.save();
+    
+    console.log('✅ Trial plan activated successfully for:', email);
+    console.log('- Plan type:', user.subscription.type);
+    console.log('- Message limit:', user.subscription.messageLimit);
+    console.log('- Call time:', user.subscription.callSeconds, 'seconds');
+    console.log('- End date:', user.subscription.endDate);
+    
+    res.json({
+      message: 'Trial plan activated successfully',
+      subscription: user.subscription
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to activate trial plan:', error);
+    res.status(500).json({ message: 'Failed to activate trial plan' });
+  }
+});
+
 export default router; 

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 // Load environment variables
-const envFile = process.env.ENV_FILE || (process.env.NODE_ENV === 'production' ? 'config.env' : 'config.dev.env');
+const envFile = process.env.ENV_FILE || (process.env.NODE_ENV === 'production' ? '.env.production' : 'config.dev.env');
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 if (!process.env.MONGODB_URI) {
   dotenv.config({ path: path.resolve(process.cwd(), 'config.env') });
@@ -83,7 +83,16 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
+    environment: process.env.NODE_ENV,
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    endpoints: {
+      auth: '/api/auth/*',
+      payment: '/api/payment/*',
+      login: '/api/auth/login'
+    },
+    cors: {
+      allowedOrigins: process.env.NODE_ENV === 'production' ? ['taxai.ae', 'onrender.com'] : ['localhost:8080']
+    }
   });
 });
 

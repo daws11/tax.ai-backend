@@ -824,4 +824,72 @@ router.post('/activate-trial-plan', async (req, res) => {
   }
 });
 
+// Login endpoint for dashboard authentication
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
+    console.log('🔐 Login attempt for email:', email);
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log('❌ User not found for email:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('✅ User found:', { id: user._id, emailVerified: user.emailVerified });
+    
+    // Check if email is verified
+    if (!user.emailVerified) {
+      console.log('❌ Email not verified for user:', user._id);
+      return res.status(401).json({ message: 'Email not verified' });
+    }
+    
+    // Verify password
+    const isValidPassword = await user.comparePassword(password);
+    if (!isValidPassword) {
+      console.log('❌ Invalid password for user:', user._id);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('✅ Password validated for user:', user._id);
+    
+    // Check if subscription is active
+    if (!user.isSubscriptionActive()) {
+      console.log('⚠️ Subscription not active for user:', user._id);
+      return res.status(403).json({ message: 'Subscription expired or inactive' });
+    }
+    
+    // Generate JWT token
+    const token = generateToken(user._id);
+    
+    console.log('✅ Login successful for user:', user._id);
+    
+    res.json({
+      message: 'Login successful',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        jobTitle: user.jobTitle,
+        language: user.language,
+        subscription: user.subscription,
+        trialUsed: user.trialUsed,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      },
+      token
+    });
+    
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
+  }
+});
+
 export default router; 

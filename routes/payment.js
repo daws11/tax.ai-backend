@@ -72,31 +72,49 @@ router.post('/confirm-payment', auth, requireEmailVerification, validatePayment,
   try {
     const { paymentIntentId, subscriptionType } = req.body;
     
+    console.log('💳 Payment confirmation request:', { paymentIntentId, subscriptionType, userId: req.user._id });
+    
     // Verify payment intent
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== 'succeeded') {
+      console.log('❌ Payment not completed:', paymentIntent.status);
       return res.status(400).json({ message: 'Payment not completed' });
     }
+    
+    console.log('✅ Payment verified successfully');
 
     // Update user subscription
     const user = await User.findById(req.user._id);
     
     const plans = {
-      monthly: { messageLimit: 100, duration: 30, price: 99 },
-      quarterly: { messageLimit: 300, duration: 90, price: 250 },
-      yearly: { messageLimit: 1200, duration: 365, price: 899 }
+      monthly: { messageLimit: 100, duration: 30, price: 99, callSeconds: 1800 },
+      quarterly: { messageLimit: 300, duration: 90, price: 250, callSeconds: 5400 },
+      yearly: { messageLimit: 1200, duration: 365, price: 899, callSeconds: 21600 }
     };
 
     const plan = plans[subscriptionType];
+    if (!plan) {
+      console.log('❌ Invalid subscription type:', subscriptionType);
+      return res.status(400).json({ message: 'Invalid subscription type' });
+    }
+    
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + plan.duration);
+
+    console.log('📋 Activating paid subscription for user:', user._id);
+    console.log('- Plan type:', subscriptionType);
+    console.log('- Message limit:', plan.messageLimit);
+    console.log('- Call time:', plan.callSeconds, 'seconds');
+    console.log('- End date:', endDate);
+    console.log('- Payment amount:', plan.price);
 
     user.subscription = {
       type: subscriptionType,
       status: 'active',
       messageLimit: plan.messageLimit,
       remainingMessages: plan.messageLimit,
+      callSeconds: plan.callSeconds,
       startDate: new Date(),
       endDate: endDate,
       payment: {
@@ -108,16 +126,18 @@ router.post('/confirm-payment', auth, requireEmailVerification, validatePayment,
     };
 
     await user.save();
-
-    // Welcome email will be sent when user reaches success step
-    console.log('✅ Payment confirmed - welcome email will be sent at success step');
+    
+    console.log('✅ Subscription activated successfully for user:', user._id);
+    console.log('- Subscription status:', user.subscription.status);
+    console.log('- Remaining messages:', user.subscription.remainingMessages);
+    console.log('- Call seconds:', user.subscription.callSeconds);
 
     res.json({
-      message: 'Payment confirmed and subscription activated',
+      message: 'Payment confirmed and subscription activated successfully',
       subscription: user.subscription
     });
-
   } catch (error) {
+    console.error('❌ Payment confirmation error:', error);
     res.status(500).json({ message: 'Error confirming payment' });
   }
 });

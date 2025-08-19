@@ -206,107 +206,10 @@ router.post('/resend-verification', async (req, res) => {
   }
 });
 
-// Select plan and send verification email
-router.post('/select-plan', auth, async (req, res) => {
-  try {
-    const { subscriptionType } = req.body;
-    
-    // Check if user exists and is not verified yet
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (user.emailVerified) {
-      return res.status(400).json({ message: 'Email is already verified' });
-    }
-
-    // Get plan details
-    const plans = {
-      trial: { messageLimit: 10, duration: 14, price: 0 },
-      monthly: { messageLimit: 100, duration: 30, price: 99 },
-      quarterly: { messageLimit: 300, duration: 90, price: 250 },
-      yearly: { messageLimit: 1200, duration: 365, price: 899 }
-    };
-
-    const plan = plans[subscriptionType];
-    if (!plan) {
-      return res.status(400).json({ message: 'Invalid subscription type' });
-    }
-
-    // Calculate end date
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + plan.duration);
-
-    // Generate verification token
-    const verificationToken = emailService.generateVerificationToken();
-    const verificationExpires = new Date();
-    verificationExpires.setHours(verificationExpires.getHours() + 24); // 24 hours
-
-    console.log('Generated verification token for plan selection:', verificationToken);
-
-    // Update user with plan and verification token
-    user.subscription = {
-      type: subscriptionType,
-      status: 'pending', // Will be activated after email verification
-      messageLimit: plan.messageLimit,
-      remainingMessages: plan.messageLimit,
-      callSeconds: 180, // 3 menit dalam detik
-      startDate: new Date(),
-      endDate: endDate,
-      payment: subscriptionType === 'trial' ? null : {
-        amount: plan.price,
-        method: 'credit_card',
-        lastPaymentDate: null,
-        nextPaymentDate: endDate
-      }
-    };
-    user.emailVerificationToken = verificationToken;
-    user.emailVerificationExpires = verificationExpires;
-    user.trialUsed = subscriptionType === 'trial';
-
-    await user.save();
-    console.log('User plan selected and verification token saved:', user._id);
-
-    // Send verification email
-    try {
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-      console.log('Sending verification email with baseUrl:', baseUrl);
-      console.log('Email service configuration:');
-      console.log('- From email: no-reply@taxai.ae');
-      console.log('- To email:', user.email);
-      console.log('- Token:', verificationToken);
-      console.log('- API Key set:', !!process.env.RESEND_API_KEY);
-      
-      await emailService.sendVerificationEmail(user.email, user.name, verificationToken, baseUrl);
-      console.log('Verification email sent successfully');
-    } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-      console.error('Email error details:', {
-        message: emailError.message,
-        stack: emailError.stack,
-        name: emailError.name
-      });
-      // Don't fail plan selection if email fails, but log it
-    }
-
-    res.json({
-      message: 'Plan selected successfully. Please check your email to verify your account.',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        subscription: user.subscription,
-        emailVerified: user.emailVerified
-      },
-      requiresEmailVerification: true
-    });
-
-  } catch (error) {
-    console.error('Plan selection error:', error);
-    res.status(500).json({ message: 'Server error during plan selection' });
-  }
-});
+// DEPRECATED: Old select-plan endpoint - REMOVED
+// This endpoint was causing conflicts with the new registration flow
+// The correct endpoint is below (line ~672) which accepts email parameter
+// and works with verified users
 
 // Update subscription after email verification (for existing flow)
 router.post('/update-subscription', auth, async (req, res) => {
@@ -569,13 +472,14 @@ router.post('/verify-email', async (req, res) => {
     
     console.log('✅ Email verified successfully for user:', user._id);
     
-    // Welcome email will be sent when user reaches success step
-    console.log('✅ Email verified successfully - welcome email will be sent at success step');
+    // Generate token for verified user
+    const authToken = generateToken(user._id);
     
     res.json({
       message: 'Email verified successfully',
       verified: true,
-      userId: user._id
+      userId: user._id,
+      token: authToken
     });
   } catch (error) {
     console.error('❌ Verify email error:', error);
@@ -645,7 +549,6 @@ router.post('/update-user-after-verification', async (req, res) => {
     
     await user.save();
     
-    // Welcome email will be sent when user reaches success step
     console.log('✅ User updated successfully - welcome email will be sent at success step');
     
     // Generate token for the updated user
@@ -666,6 +569,99 @@ router.post('/update-user-after-verification', async (req, res) => {
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ message: 'Failed to update user' });
+  }
+});
+
+// Select plan and activate subscription
+router.post('/select-plan', async (req, res) => {
+  try {
+    const { subscriptionType, email } = req.body;
+    
+    if (!subscriptionType || !email) {
+      return res.status(400).json({ message: 'Subscription type and email are required' });
+    }
+    
+    console.log('📋 Plan selection request:', { subscriptionType, email });
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (!user.emailVerified) {
+      return res.status(400).json({ message: 'Email not verified' });
+    }
+    
+    // Get plan details
+    const plans = {
+      trial: { messageLimit: 50, duration: 14, price: 0, callSeconds: 300 },
+      monthly: { messageLimit: 100, duration: 30, price: 99, callSeconds: 1800 },
+      quarterly: { messageLimit: 300, duration: 90, price: 250, callSeconds: 5400 },
+      yearly: { messageLimit: 1200, duration: 365, price: 899, callSeconds: 21600 }
+    };
+    
+    const plan = plans[subscriptionType];
+    if (!plan) {
+      return res.status(400).json({ message: 'Invalid subscription type' });
+    }
+    
+    // Calculate end date
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + plan.duration);
+    
+    console.log('📋 Updating subscription for user:', user._id);
+    console.log('- Plan type:', subscriptionType);
+    console.log('- Message limit:', plan.messageLimit);
+    console.log('- Call time:', plan.callSeconds, 'seconds');
+    console.log('- End date:', endDate);
+    
+    // Update user subscription
+    user.subscription = {
+      type: subscriptionType,
+      status: subscriptionType === 'trial' ? 'active' : 'pending',
+      messageLimit: plan.messageLimit,
+      remainingMessages: plan.messageLimit,
+      callSeconds: plan.callSeconds,
+      startDate: new Date(),
+      endDate: endDate,
+      payment: subscriptionType === 'trial' ? {
+        amount: 0,
+        method: 'trial',
+        lastPaymentDate: new Date(),
+        nextPaymentDate: endDate
+      } : {
+        amount: plan.price,
+        method: 'credit_card',
+        lastPaymentDate: null,
+        nextPaymentDate: endDate
+      }
+    };
+    
+    // Mark trial as used if applicable
+    if (subscriptionType === 'trial') {
+      user.trialUsed = true;
+    }
+    
+    await user.save();
+    
+    console.log('✅ Subscription updated successfully for user:', user._id);
+    
+    res.json({
+      message: 'Plan selected successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        subscription: user.subscription,
+        emailVerified: user.emailVerified
+      },
+      requiresPayment: subscriptionType !== 'trial'
+    });
+    
+  } catch (error) {
+    console.error('Plan selection error:', error);
+    res.status(500).json({ message: 'Server error during plan selection' });
   }
 });
 

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import User from './models/User.js';
+import User from '../models/User.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';

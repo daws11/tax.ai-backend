@@ -15,8 +15,8 @@ import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 
 // Import routes
-import authRoutes from '../routes/auth.js';
-import paymentRoutes from '../routes/payment.js';
+import authRoutes from './routes/auth.js';
+import paymentRoutes from './routes/payment.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

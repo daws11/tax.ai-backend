@@ -194,9 +194,10 @@ router.post('/resend-verification', async (req, res) => {
 
     // Send new verification email - prefer request origin when available in local
     const origin = req.headers.origin;
-    const baseUrl = (origin && /localhost|127\.0\.0\.1/.test(origin))
+    const computedBase = (origin && /localhost|127\.0\.0\.1/.test(origin))
       ? origin
       : (process.env.FRONTEND_URL || 'http://localhost:8080');
+    const baseUrl = computedBase.replace(/\/+$/, '');
     await emailService.sendVerificationEmail(email, user.name, verificationToken, baseUrl);
 
     res.json({
@@ -389,9 +390,10 @@ router.post('/send-verification', async (req, res) => {
     // Send verification email - Unified configuration
     // Prefer request origin for local testing, fallback to env FRONTEND_URL
     const origin = req.headers.origin;
-    const frontendUrl = (origin && /localhost|127\.0\.0\.1/.test(origin))
+    const computedFront = (origin && /localhost|127\.0\.0\.1/.test(origin))
       ? origin
       : (process.env.FRONTEND_URL || 'http://localhost:8080');
+    const frontendUrl = computedFront.replace(/\/+$/, '');
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
     
     console.log('📧 Sending verification email:');

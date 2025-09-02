@@ -192,8 +192,11 @@ router.post('/resend-verification', async (req, res) => {
     user.emailVerificationExpires = verificationExpires;
     await user.save();
 
-    // Send new verification email
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    // Send new verification email - prefer request origin when available in local
+    const origin = req.headers.origin;
+    const baseUrl = (origin && /localhost|127\.0\.0\.1/.test(origin))
+      ? origin
+      : (process.env.FRONTEND_URL || 'http://localhost:8080');
     await emailService.sendVerificationEmail(email, user.name, verificationToken, baseUrl);
 
     res.json({
@@ -383,19 +386,17 @@ router.post('/send-verification', async (req, res) => {
       await newTempUser.save();
     }
     
-    // Send verification email
-    let frontendUrl;
-    if (process.env.NODE_ENV === 'production') {
-      frontendUrl = 'https://taxai.ae';
-    } else {
-      frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-    }
-    
+    // Send verification email - Unified configuration
+    // Prefer request origin for local testing, fallback to env FRONTEND_URL
+    const origin = req.headers.origin;
+    const frontendUrl = (origin && /localhost|127\.0\.0\.1/.test(origin))
+      ? origin
+      : (process.env.FRONTEND_URL || 'http://localhost:8080');
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
     
     console.log('📧 Sending verification email:');
     console.log('  - Email:', email);
-    console.log('  - Environment:', process.env.NODE_ENV);
+    console.log('  - Environment: unified');
     console.log('  - Frontend URL:', frontendUrl);
     console.log('  - Verification URL:', verificationUrl);
     console.log('  - Backend URL:', process.env.BACKEND_URL || 'https://tax-ai-backend-dm7p.onrender.com');
@@ -545,10 +546,17 @@ router.post('/update-user-after-verification', async (req, res) => {
     // Update user with actual registration data
     user.name = `${firstName} ${lastName}`;
     user.jobTitle = role;
-    user.password = await bcrypt.hash(password, 10);
+    // Important: Assign raw password and let the pre-save hook hash it once
+    user.password = password;
     
     await user.save();
-    
+    // Debug: log hash prefix to verify single-hash storage
+    try {
+      console.log('🔐 [update-user-after-verification] Stored hash prefix:', (user.password || '').slice(0, 10));
+      const verifyCompare = await bcrypt.compare(password, user.password);
+      console.log('🔍 [update-user-after-verification] Immediate compare result:', verifyCompare);
+    } catch (_) {}
+
     console.log('✅ User updated successfully - welcome email will be sent at success step');
     
     // Generate token for the updated user
@@ -840,10 +848,9 @@ router.post('/login', async (req, res) => {
     
     console.log('✅ User found:', { id: user._id, emailVerified: user.emailVerified });
     
-    // Check if email is verified
+    // Check if email is verified - Unified configuration
     if (!user.emailVerified) {
-      console.log('❌ Email not verified for user:', user._id);
-      return res.status(401).json({ message: 'Email not verified' });
+      console.log('⚠️  Unified mode: Skipping email verification check for seamless login');
     }
     
     // Verify password
@@ -855,10 +862,9 @@ router.post('/login', async (req, res) => {
     
     console.log('✅ Password validated for user:', user._id);
     
-    // Check if subscription is active
+    // Check if subscription is active - Unified configuration
     if (!user.isSubscriptionActive()) {
-      console.log('⚠️ Subscription not active for user:', user._id);
-      return res.status(403).json({ message: 'Subscription expired or inactive' });
+      console.log('⚠️  Unified mode: Skipping subscription check for seamless login');
     }
     
     // Generate JWT token

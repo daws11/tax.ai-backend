@@ -1,8 +1,12 @@
 import dotenv from 'dotenv';
 import path from 'path';
-// Load environment variables
-const envFile = process.env.ENV_FILE || (process.env.NODE_ENV === 'production' ? '.env.production' : 'config.dev.env');
-dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+// Load environment variables - prefer local .env in development, fallback to production
+if (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production') {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.production') });
+} else {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+}
+// Final fallback
 if (!process.env.MONGODB_URI) {
   dotenv.config({ path: path.resolve(process.cwd(), 'config.env') });
 }
@@ -28,29 +32,57 @@ const PORT = process.env.PORT || 5000;
 console.log('🔍 Environment Variables Check:');
 console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? '***SET***' : 'NOT SET');
 console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('PORT:', process.env.PORT);
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? '***SET***' : 'NOT SET');
 console.log('='.repeat(50));
 
-// Security middleware
-app.use(helmet());
+// CORS should be registered BEFORE security middleware to ensure preflight isn't blocked
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // untuk request dari server (tanpa origin)
-    // Allow localhost:8080 in development
-    if (process.env.NODE_ENV !== 'production' && origin === 'http://localhost:8080') {
-      return callback(null, true);
+    try {
+      const { hostname, protocol } = new URL(origin);
+      // Allow explicit origins list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // Allow taxai.ae domains, onrender.com deployments, and localhost on any port
+      const isAllowed =
+        hostname.endsWith('taxai.ae') ||
+        hostname.endsWith('onrender.com') ||
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1';
+      if (isAllowed && (protocol === 'http:' || protocol === 'https:')) {
+        return callback(null, true);
+      }
+    } catch (_) {
+      // Fallback to basic checks if URL parsing fails
+      const basicAllowed = /taxai\.ae/.test(origin) || /onrender\.com/.test(origin) || /localhost/.test(origin);
+      if (basicAllowed) return callback(null, true);
     }
-    const allowed = /\.onrender\.com$/.test(origin) || /taxai\.ae$/.test(origin);
-    if (allowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  optionsSuccessStatus: 200
 }));
+
+// Handle preflight for all routes
+app.options('*', cors());
+
+// Security middleware
+app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({
@@ -83,7 +115,7 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
+    environment: 'unified',
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     endpoints: {
       auth: '/api/auth/*',
@@ -91,7 +123,7 @@ app.get('/api/health', (req, res) => {
       login: '/api/auth/login'
     },
     cors: {
-      allowedOrigins: process.env.NODE_ENV === 'production' ? ['taxai.ae', 'onrender.com'] : ['localhost:8080']
+      allowedOrigins: ['taxai.ae', 'onrender.com', 'localhost']
     }
   });
 });
@@ -101,7 +133,7 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ 
     message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    error: 'Internal server error'
   });
 });
 
@@ -113,7 +145,7 @@ app.use('*', (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Environment: unified`);
   console.log(`📧 Email service configured for: no-reply@taxai.ae`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
 });

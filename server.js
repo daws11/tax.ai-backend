@@ -1,15 +1,28 @@
 import dotenv from 'dotenv';
 import path from 'path';
+
 // Load environment variables - prefer local .env in development, fallback to production
+console.log('🔍 Loading environment variables...');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
 if (process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production') {
   dotenv.config({ path: path.resolve(process.cwd(), '.env.production') });
+  console.log('📁 Loaded .env.production');
 } else {
   dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+  console.log('📁 Loaded .env');
 }
 // Final fallback
 if (!process.env.MONGODB_URI) {
   dotenv.config({ path: path.resolve(process.cwd(), 'config.env') });
+  console.log('📁 Loaded config.env as fallback');
 }
+
+console.log('✅ Environment variables loaded:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? '***SET***' : 'NOT SET');
+console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? '***SET***' : 'NOT SET');
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('PORT:', process.env.PORT);
 
 import express from 'express';
 import mongoose from 'mongoose';

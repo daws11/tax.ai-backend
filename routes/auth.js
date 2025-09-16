@@ -192,11 +192,12 @@ router.post('/resend-verification', async (req, res) => {
     user.emailVerificationExpires = verificationExpires;
     await user.save();
 
-    // Send new verification email - prefer request origin when available in local
+    // Send new verification email - Production configuration
     const origin = req.headers.origin;
-    const computedBase = (origin && /localhost|127\.0\.0\.1/.test(origin))
+    const isLocalDevelopment = process.env.NODE_ENV === 'development' && origin && /localhost|127\.0\.0\.1/.test(origin);
+    const computedBase = isLocalDevelopment
       ? origin
-      : (process.env.FRONTEND_URL || 'http://localhost:8080');
+      : (process.env.FRONTEND_URL || 'https://taxai.ae');
     const baseUrl = computedBase.replace(/\/+$/, '');
     await emailService.sendVerificationEmail(email, user.name, verificationToken, baseUrl);
 
@@ -387,12 +388,13 @@ router.post('/send-verification', async (req, res) => {
       await newTempUser.save();
     }
     
-    // Send verification email - Unified configuration
-    // Prefer request origin for local testing, fallback to env FRONTEND_URL
+    // Send verification email - Production configuration
+    // Use FRONTEND_URL from environment for production, origin only for local development
     const origin = req.headers.origin;
-    const computedFront = (origin && /localhost|127\.0\.0\.1/.test(origin))
+    const isLocalDevelopment = process.env.NODE_ENV === 'development' && origin && /localhost|127\.0\.0\.1/.test(origin);
+    const computedFront = isLocalDevelopment
       ? origin
-      : (process.env.FRONTEND_URL || 'http://localhost:8080');
+      : (process.env.FRONTEND_URL || 'https://taxai.ae');
     const frontendUrl = computedFront.replace(/\/+$/, '');
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
     
